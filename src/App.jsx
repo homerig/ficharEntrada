@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./styles/App.css";
 
-const API_URL = "/api/fichar";
+const API_URL = "https://script.google.com/macros/s/AKfycbyizI_IxZ62tsNc6ZW2WblNTqbwDP8VRePCojAkAXGic4mzB975U_YFJa4Z1rdnPb5S/exec";
 
 function App() {
   const [dni, setDni] = useState("");
