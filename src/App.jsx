@@ -1,46 +1,44 @@
 import { useState } from "react";
+import { submitFichada } from "./services/fichadas";
+import { getCurrentPosition } from "./utils/geolocation";
 import "./styles/App.css";
 
-const API_URL = "https://script.google.com/macros/s/AKfycbyizI_IxZ62tsNc6ZW2WblNTqbwDP8VRePCojAkAXGic4mzB975U_YFJa4Z1rdnPb5S/exec";
+const initialForm = {
+  dni: "",
+  nombreApellido: "",
+};
 
 function App() {
-  const [dni, setDni] = useState("");
-  const [nombreApellido, setNombreApellido] = useState("");
+  const [form, setForm] = useState(initialForm);
   const [needsRegistration, setNeedsRegistration] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const getCurrentPosition = () => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error("Tu dispositivo no soporta geolocalización"));
-        return;
-      }
+  const handleChange = (event) => {
+    const { name, value } = event.target;
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve(position);
-        },
-        () => {
-          reject(new Error("No se pudo obtener tu ubicación"));
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      );
-    });
+    setForm((currentForm) => ({
+      ...currentForm,
+      [name]: value,
+    }));
+  };
+
+  const resetForm = () => {
+    setForm(initialForm);
+    setNeedsRegistration(false);
   };
 
   const fichar = async () => {
-    if (!dni.trim()) {
-      setMessage("Ingresá tu DNI");
+    const trimmedDni = form.dni.trim();
+    const trimmedNombreApellido = form.nombreApellido.trim();
+
+    if (!trimmedDni) {
+      setMessage("Ingresá tu DNI.");
       return;
     }
 
-    if (needsRegistration && !nombreApellido.trim()) {
-      setMessage("Ingresá tu nombre y apellido");
+    if (needsRegistration && !trimmedNombreApellido) {
+      setMessage("Ingresá tu nombre y apellido.");
       return;
     }
 
@@ -50,78 +48,89 @@ function App() {
     try {
       const position = await getCurrentPosition();
 
-      const payload = {
-        dni: dni.trim(),
+      const data = await submitFichada({
+        dni: trimmedDni,
         lat: position.coords.latitude,
-        lng: position.coords.longitude
-      };
-
-      if (needsRegistration) {
-        payload.nombreApellido = nombreApellido.trim();
-      }
-
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8"
-        },
-        body: JSON.stringify(payload)
+        lng: position.coords.longitude,
+        nombreApellido: needsRegistration ? trimmedNombreApellido : undefined,
       });
-
-      const data = await res.json();
 
       if (data.needsRegistration) {
         setNeedsRegistration(true);
-        setMessage(`DNI no registrado. Ingresá tu nombre y apellido. Servicio detectado: ${data.servicio}`);
-        setLoading(false);
+        setMessage(
+          data.message ||
+            `DNI no registrado. Ingresá tu nombre y apellido.${data.servicio ? ` Servicio detectado: ${data.servicio}` : ""}`,
+        );
         return;
       }
 
       if (!data.ok) {
-        setMessage(data.message || "No se pudo fichar");
-        setLoading(false);
+        setMessage(data.message || "No se pudo fichar.");
         return;
       }
 
-      setMessage(`${data.message} - Servicio: ${data.servicio}`);
-      setNeedsRegistration(false);
-      setDni("");
-      setNombreApellido("");
-    } catch (err) {
-      setMessage(err.message || "Error conectando con el servidor");
+      setMessage(
+        data.servicio
+          ? `${data.message} - Servicio: ${data.servicio}`
+          : data.message || "Fichada registrada correctamente.",
+      );
+      resetForm();
+    } catch (error) {
+      setMessage(error.message || "Ocurrió un problema al registrar la fichada.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
-    <div className="container">
-      <div className="card">
-        <h1>Fichar Asistencia</h1>
+    <main className="container">
+      <section className="card">
+        <div className="card__header">
+          <p className="eyebrow">Registro de asistencia</p>
+          <h1>Fichar entrada</h1>
+          <p className="card__description">
+            Ingresá tu DNI y permití el acceso a la ubicación para registrar la fichada.
+          </p>
+        </div>
 
-        <input
-          type="text"
-          placeholder="Ingresá tu DNI"
-          value={dni}
-          onChange={(e) => setDni(e.target.value)}
-        />
+        <div className="form">
+          <label className="field">
+            <span>DNI</span>
+            <input
+              type="text"
+              name="dni"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="Ingresá tu DNI"
+              value={form.dni}
+              onChange={handleChange}
+              disabled={loading}
+            />
+          </label>
 
-        {needsRegistration && (
-          <input
-            type="text"
-            placeholder="Nombre y Apellido"
-            value={nombreApellido}
-            onChange={(e) => setNombreApellido(e.target.value)}
-          />
-        )}
+          {needsRegistration && (
+            <label className="field">
+              <span>Nombre y apellido</span>
+              <input
+                type="text"
+                name="nombreApellido"
+                autoComplete="name"
+                placeholder="Nombre y apellido"
+                value={form.nombreApellido}
+                onChange={handleChange}
+                disabled={loading}
+              />
+            </label>
+          )}
 
-        <button onClick={fichar} disabled={loading}>
-          {loading ? "Procesando..." : "Fichar"}
-        </button>
+          <button type="button" onClick={fichar} disabled={loading}>
+            {loading ? "Procesando..." : "Fichar"}
+          </button>
+        </div>
 
         {message && <p className="message">{message}</p>}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 
