@@ -1,4 +1,6 @@
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/$/, "");
+import { getApiUrl } from "./config";
+
+const API_URL = getApiUrl();
 
 function getNetworkErrorMessage(error, requestUrl) {
   const detail = error instanceof Error && error.message ? error.message : "Error de red";
