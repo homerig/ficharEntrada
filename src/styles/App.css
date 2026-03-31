@@ -308,6 +308,27 @@ h2 {
   justify-content: center;
   z-index: 1;
   flex: 0 0 auto;
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  touch-action: manipulation;
+}
+
+.password-toggle:hover,
+.password-toggle:active,
+.password-toggle:focus,
+.password-toggle:focus-visible {
+  transform: translateY(-50%);
+}
+
+.password-toggle:hover {
+  background: rgba(255, 250, 240, 0.92);
+  box-shadow: none;
+}
+
+.password-toggle:focus,
+.password-toggle:focus-visible {
+  outline: none;
+  border-color: rgba(13, 107, 89, 0.4);
+  box-shadow: 0 0 0 3px rgba(13, 107, 89, 0.12);
 }
 
 .field input:disabled,
