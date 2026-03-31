@@ -285,18 +285,20 @@ h2 {
 }
 
 .password-field input {
-  padding-right: 60px;
+  padding-right: 56px;
 }
 
 .password-toggle {
   position: absolute;
   top: 50%;
-  right: 10px;
+  right: 12px;
   transform: translateY(-50%);
-  min-width: 42px;
-  padding: 8px 10px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 999px;
   background: rgba(255, 250, 240, 0.92);
   color: var(--text);
   font-size: 0.82rem;
@@ -304,6 +306,8 @@ h2 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  z-index: 1;
+  flex: 0 0 auto;
 }
 
 .field input:disabled,
@@ -542,7 +546,7 @@ button:disabled {
 
   .tab,
   .button,
-  button {
+  button:not(.password-toggle) {
     width: 100%;
   }
 }
