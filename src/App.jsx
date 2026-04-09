@@ -232,6 +232,7 @@ function App() {
   const [serviceForm, setServiceForm] = useState(initialServiceForm);
   const [serviceEditingId, setServiceEditingId] = useState(null);
   const [serviceSaving, setServiceSaving] = useState(false);
+  const [serviceDeletingId, setServiceDeletingId] = useState(null);
 
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -773,15 +774,27 @@ function App() {
     }
   };
 
-  const handleServiceDelete = async (serviceId) => {
+  const handleServiceDelete = async (service) => {
+    if (!window.confirm(`Vas a eliminar el servicio "${service.nombre}". Esta accion no se puede deshacer.`)) {
+      return;
+    }
+
+    setServiceDeletingId(service.id);
     setServicesMessage("");
 
     try {
-      await deleteServicio(serviceId, token, handleUnauthorized);
-      setServicesMessage("Servicio desactivado correctamente.");
+      await deleteServicio(service.id, token, handleUnauthorized);
+
+      if (serviceEditingId === service.id) {
+        resetServiceForm();
+      }
+
+      setServicesMessage("Servicio eliminado correctamente.");
       await loadServices(includeInactiveServices);
     } catch (error) {
-      setServicesMessage(error.message || "No se pudo desactivar el servicio.");
+      setServicesMessage(error.message || "No se pudo eliminar el servicio.");
+    } finally {
+      setServiceDeletingId(null);
     }
   };
 
@@ -1480,18 +1493,18 @@ function App() {
                               type="button"
                               className="button button--small"
                               onClick={() => startEditService(service)}
+                              disabled={serviceDeletingId === service.id}
                             >
                               Editar
                             </button>
-                            {service.activo && (
-                              <button
-                                type="button"
-                                className="button button--ghost button--small"
-                                onClick={() => handleServiceDelete(service.id)}
-                              >
-                                Desactivar
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              className="button button--danger button--small"
+                              onClick={() => handleServiceDelete(service)}
+                              disabled={serviceDeletingId === service.id}
+                            >
+                              {serviceDeletingId === service.id ? "Eliminando..." : "Eliminar"}
+                            </button>
                           </td>
                         </tr>
                       ))

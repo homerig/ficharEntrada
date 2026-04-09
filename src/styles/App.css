@@ -9,6 +9,8 @@
   --primary: #494aff;
   --primary-hover: #3738cc;
   --accent: #c96d2b;
+  --danger: #b64232;
+  --danger-hover: #973526;
   --shadow: 0 24px 64px rgba(67, 47, 15, 0.12);
 }
 
@@ -111,6 +113,16 @@ button:not(.button--ghost):not(.tab):not(.corner-button):hover,
 .button--small {
   padding: 9px 12px;
   font-size: 0.88rem;
+}
+
+.button--danger {
+  background: var(--danger);
+  color: #fffaf1;
+}
+
+.button--danger:hover {
+  background: var(--danger-hover);
+  box-shadow: 0 16px 28px rgba(151, 53, 38, 0.18);
 }
 
 .button--secondary {
