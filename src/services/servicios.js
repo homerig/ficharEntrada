@@ -51,6 +51,7 @@ export function updateServicio(id, payload, token, onUnauthorized) {
 export function deleteServicio(id, token, onUnauthorized) {
   return apiRequest(`/api/servicios/${id}`, {
     method: "DELETE",
+    body: {},
     token,
     onUnauthorized,
   });

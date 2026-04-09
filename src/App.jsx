@@ -109,6 +109,17 @@ function mapServicePayload(form) {
   };
 }
 
+function mapExistingServicePayload(service, activo = service.activo) {
+  return {
+    nombre: service.nombre?.trim() || "",
+    lat: Number(service.lat),
+    lon: Number(service.lon),
+    radioMetros: Number(service.radioMetros),
+    horaEntradaLimite: service.horaEntradaLimite || "",
+    activo: normalizeBoolean(activo),
+  };
+}
+
 function validateServiceForm(form) {
   const nombre = form.nombre.trim();
   const lat = Number(form.lat);
@@ -232,6 +243,7 @@ function App() {
   const [serviceForm, setServiceForm] = useState(initialServiceForm);
   const [serviceEditingId, setServiceEditingId] = useState(null);
   const [serviceSaving, setServiceSaving] = useState(false);
+  const [serviceTogglingId, setServiceTogglingId] = useState(null);
   const [serviceDeletingId, setServiceDeletingId] = useState(null);
 
   const [users, setUsers] = useState([]);
@@ -795,6 +807,43 @@ function App() {
       setServicesMessage(error.message || "No se pudo eliminar el servicio.");
     } finally {
       setServiceDeletingId(null);
+    }
+  };
+
+  const handleServiceToggleActive = async (service) => {
+    const nextActive = !service.activo;
+    const actionLabel = nextActive ? "activar" : "desactivar";
+
+    if (!window.confirm(`Vas a ${actionLabel} el servicio "${service.nombre}".`)) {
+      return;
+    }
+
+    setServiceTogglingId(service.id);
+    setServicesMessage("");
+
+    try {
+      await updateServicio(
+        service.id,
+        mapExistingServicePayload(service, nextActive),
+        token,
+        handleUnauthorized,
+      );
+
+      if (serviceEditingId === service.id) {
+        setServiceForm((current) => ({
+          ...current,
+          activo: nextActive,
+        }));
+      }
+
+      setServicesMessage(
+        nextActive ? "Servicio activado correctamente." : "Servicio desactivado correctamente.",
+      );
+      await loadServices(includeInactiveServices);
+    } catch (error) {
+      setServicesMessage(error.message || `No se pudo ${actionLabel} el servicio.`);
+    } finally {
+      setServiceTogglingId(null);
     }
   };
 
@@ -1493,15 +1542,35 @@ function App() {
                               type="button"
                               className="button button--small"
                               onClick={() => startEditService(service)}
-                              disabled={serviceDeletingId === service.id}
+                              disabled={
+                                serviceDeletingId === service.id || serviceTogglingId === service.id
+                              }
                             >
                               Editar
                             </button>
                             <button
                               type="button"
+                              className="button button--ghost button--small"
+                              onClick={() => handleServiceToggleActive(service)}
+                              disabled={
+                                serviceDeletingId === service.id || serviceTogglingId === service.id
+                              }
+                            >
+                              {serviceTogglingId === service.id
+                                ? service.activo
+                                  ? "Desactivando..."
+                                  : "Activando..."
+                                : service.activo
+                                  ? "Desactivar"
+                                  : "Activar"}
+                            </button>
+                            <button
+                              type="button"
                               className="button button--danger button--small"
                               onClick={() => handleServiceDelete(service)}
-                              disabled={serviceDeletingId === service.id}
+                              disabled={
+                                serviceDeletingId === service.id || serviceTogglingId === service.id
+                              }
                             >
                               {serviceDeletingId === service.id ? "Eliminando..." : "Eliminar"}
                             </button>
