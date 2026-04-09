@@ -10,7 +10,9 @@ import {
 import { submitFichada } from "./services/fichadas";
 import { downloadExcel } from "./services/reportes";
 import {
+  activateServicio,
   createServicio,
+  deactivateServicio,
   deleteServicio,
   listServicios,
   updateServicio,
@@ -106,17 +108,6 @@ function mapServicePayload(form) {
     radioMetros: Number(form.radioMetros),
     horaEntradaLimite: form.horaEntradaLimite,
     activo: normalizeBoolean(form.activo),
-  };
-}
-
-function mapExistingServicePayload(service, activo = service.activo) {
-  return {
-    nombre: service.nombre?.trim() || "",
-    lat: Number(service.lat),
-    lon: Number(service.lon),
-    radioMetros: Number(service.radioMetros),
-    horaEntradaLimite: service.horaEntradaLimite || "",
-    activo: normalizeBoolean(activo),
   };
 }
 
@@ -822,12 +813,9 @@ function App() {
     setServicesMessage("");
 
     try {
-      await updateServicio(
-        service.id,
-        mapExistingServicePayload(service, nextActive),
-        token,
-        handleUnauthorized,
-      );
+      await (nextActive
+        ? activateServicio(service.id, token, handleUnauthorized)
+        : deactivateServicio(service.id, token, handleUnauthorized));
 
       if (serviceEditingId === service.id) {
         setServiceForm((current) => ({

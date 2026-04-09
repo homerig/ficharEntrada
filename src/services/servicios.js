@@ -48,10 +48,25 @@ export function updateServicio(id, payload, token, onUnauthorized) {
   }).then((response) => normalizeServicio(response.data || response));
 }
 
+export function activateServicio(id, token, onUnauthorized) {
+  return apiRequest(`/api/servicios/${id}/activate`, {
+    method: "PATCH",
+    token,
+    onUnauthorized,
+  }).then((response) => normalizeServicio(response.data || response));
+}
+
+export function deactivateServicio(id, token, onUnauthorized) {
+  return apiRequest(`/api/servicios/${id}/deactivate`, {
+    method: "PATCH",
+    token,
+    onUnauthorized,
+  }).then((response) => normalizeServicio(response.data || response));
+}
+
 export function deleteServicio(id, token, onUnauthorized) {
   return apiRequest(`/api/servicios/${id}`, {
     method: "DELETE",
-    body: {},
     token,
     onUnauthorized,
   });
