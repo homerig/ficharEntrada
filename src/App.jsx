@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { ROLES, canDownloadExcel, isAdmin } from "./constants/roles";
+import {
+  ROLES,
+  canChangeTargetUserRole,
+  canDownloadExcel,
+  canManage,
+  getAvailableRoles,
+} from "./constants/roles";
 import {
   confirmPasswordReset,
   getCurrentUser,
@@ -84,7 +90,7 @@ function buildDashboardTabs(role) {
     tabs.push({ id: "excel", label: "Descargar Excel" });
   }
 
-  if (isAdmin(role)) {
+  if (canManage(role)) {
     tabs.push({ id: "servicios", label: "Servicios" });
     tabs.push({ id: "usuarios", label: "Usuarios" });
   }
@@ -245,6 +251,15 @@ function App() {
   const [userSaving, setUserSaving] = useState(false);
 
   const dashboardTabs = useMemo(() => buildDashboardTabs(user?.role), [user?.role]);
+  const selectedUser = useMemo(
+    () => users.find((current) => current.id === userEditingId) || null,
+    [userEditingId, users],
+  );
+  const availableRoles = useMemo(() => getAvailableRoles(user?.role), [user?.role]);
+  const canChangeSelectedUserRole = canChangeTargetUserRole(user?.role, selectedUser?.role);
+  const userRoleOptions = canChangeSelectedUserRole
+    ? availableRoles
+    : [selectedUser?.role || userForm.role].filter(Boolean);
 
   const performLogout = useCallback((message = "La sesion finalizo. Volve a ingresar.") => {
     clearStoredToken();
@@ -363,19 +378,19 @@ function App() {
       loadServices(false);
     }
 
-    if (isAdmin(user.role) && users.length === 0) {
+    if (canManage(user.role) && users.length === 0) {
       loadUsers();
     }
   }, [dashboardVisible, loadServices, loadUsers, user, users.length]);
 
   useEffect(() => {
-    if (user && isAdmin(user.role) && dashboardVisible && dashboardTab === "servicios") {
+    if (user && canManage(user.role) && dashboardVisible && dashboardTab === "servicios") {
       loadServices(includeInactiveServices);
     }
   }, [dashboardTab, dashboardVisible, includeInactiveServices, loadServices, user]);
 
   useEffect(() => {
-    if (user && isAdmin(user.role) && dashboardVisible && dashboardTab === "usuarios" && users.length === 0) {
+    if (user && canManage(user.role) && dashboardVisible && dashboardTab === "usuarios" && users.length === 0) {
       loadUsers();
     }
   }, [dashboardTab, dashboardVisible, loadUsers, user, users.length]);
@@ -848,15 +863,19 @@ function App() {
       const payload = {
         ...(userEditingId ? {} : { dni: userForm.dni.trim() }),
         nombreApellido: userForm.nombreApellido.trim(),
-        role: userForm.role,
         activo: Boolean(userForm.activo),
         ...(userForm.password.trim() ? { password: userForm.password } : {}),
       };
 
       if (userEditingId) {
+        if (canChangeSelectedUserRole) {
+          payload.role = userForm.role;
+        }
+
         await updateUsuario(userEditingId, payload, token, handleUnauthorized);
         setUsersMessage("Usuario actualizado correctamente.");
       } else {
+        payload.role = userForm.role;
         await createUsuario(payload, token, handleUnauthorized);
         setUsersMessage("Usuario creado correctamente.");
       }
@@ -1346,7 +1365,7 @@ function App() {
                     </div>
                   )}
 
-                  {isAdmin(user.role) && employeeOptions.length > 0 ? (
+                  {canManage(user.role) && employeeOptions.length > 0 ? (
                     <label className="field">
                       <span>Empleado</span>
                       <select
@@ -1409,7 +1428,7 @@ function App() {
             </section>
           )}
 
-          {dashboardTab === "servicios" && isAdmin(user.role) && (
+          {dashboardTab === "servicios" && canManage(user.role) && (
             <section className="panel">
               <div className="panel__header">
                 <div>
@@ -1572,7 +1591,7 @@ function App() {
             </section>
           )}
 
-          {dashboardTab === "usuarios" && isAdmin(user.role) && (
+          {dashboardTab === "usuarios" && canManage(user.role) && (
             <section className="panel">
               <div className="panel__header">
                 <div>
@@ -1611,8 +1630,13 @@ function App() {
 
                   <label className="field">
                     <span>Rol</span>
-                    <select name="role" value={userForm.role} onChange={handleUserChange}>
-                      {Object.values(ROLES).map((role) => (
+                    <select
+                      name="role"
+                      value={userForm.role}
+                      onChange={handleUserChange}
+                      disabled={!canChangeSelectedUserRole}
+                    >
+                      {userRoleOptions.map((role) => (
                         <option key={role} value={role}>
                           {role}
                         </option>
