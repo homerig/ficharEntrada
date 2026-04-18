@@ -15,8 +15,18 @@
 }
 
 .app-shell {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   padding: 24px;
+}
+
+.app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(circle at top left, rgba(201, 109, 43, 0.18), transparent 28%),
     radial-gradient(circle at top right, rgba(13, 107, 89, 0.14), transparent 26%),
@@ -501,7 +511,7 @@ button:disabled {
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.48);
+  background: var(--surface-strong);
 }
 
 .service-turno-card__title {

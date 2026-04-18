@@ -91,6 +91,8 @@ const initialUserForm = {
   activo: true,
 };
 
+const initialDeleteConfirmation = null;
+
 function buildDashboardTabs(role) {
   const tabs = [];
 
@@ -308,6 +310,7 @@ function App() {
   const [userForm, setUserForm] = useState(initialUserForm);
   const [userEditingId, setUserEditingId] = useState(null);
   const [userSaving, setUserSaving] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(initialDeleteConfirmation);
 
   const dashboardTabs = useMemo(() => buildDashboardTabs(user?.role), [user?.role]);
   const selectedUser = useMemo(
@@ -561,6 +564,20 @@ function App() {
   const resetUserForm = () => {
     setUserEditingId(null);
     setUserForm(initialUserForm);
+  };
+
+  const closeDeleteConfirmation = () => {
+    setDeleteConfirmation(initialDeleteConfirmation);
+  };
+
+  const requestServiceDelete = (service) => {
+    setDeleteConfirmation({
+      type: "service",
+      id: service.id,
+      title: "Eliminar servicio",
+      message: `Vas a eliminar el servicio "${service.nombre}". Esta accion no se puede deshacer.`,
+      confirmLabel: "Eliminar servicio",
+    });
   };
 
   const startEditUser = (currentUser) => {
@@ -882,18 +899,14 @@ function App() {
     }
   };
 
-  const handleServiceDelete = async (service) => {
-    if (!window.confirm(`Vas a eliminar el servicio "${service.nombre}". Esta accion no se puede deshacer.`)) {
-      return;
-    }
-
-    setServiceDeletingId(service.id);
+  const handleServiceDelete = async (serviceId) => {
+    setServiceDeletingId(serviceId);
     setServicesMessage("");
 
     try {
-      await deleteServicio(service.id, token, handleUnauthorized);
+      await deleteServicio(serviceId, token, handleUnauthorized);
 
-      if (serviceEditingId === service.id) {
+      if (serviceEditingId === serviceId) {
         resetServiceForm();
       }
 
@@ -976,6 +989,19 @@ function App() {
       setUsersMessage(error.message || "No se pudo guardar el usuario.");
     } finally {
       setUserSaving(false);
+    }
+  };
+
+  const handleDeleteConfirmation = async () => {
+    if (!deleteConfirmation) {
+      return;
+    }
+
+    const currentConfirmation = deleteConfirmation;
+    closeDeleteConfirmation();
+
+    if (currentConfirmation.type === "service") {
+      await handleServiceDelete(currentConfirmation.id);
     }
   };
 
@@ -1352,6 +1378,39 @@ function App() {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {deleteConfirmation && (
+        <div className="modal-backdrop" onClick={closeDeleteConfirmation} role="presentation">
+          <section className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="card__header">
+              <p className="eyebrow">Confirmación</p>
+              <h2>{deleteConfirmation.title}</h2>
+              <p className="card__description">{deleteConfirmation.message}</p>
+            </div>
+
+            <div className="actions">
+              <button
+                type="button"
+                className="button button--danger"
+                onClick={handleDeleteConfirmation}
+                disabled={Boolean(serviceDeletingId)}
+              >
+                {serviceDeletingId === deleteConfirmation.id
+                  ? "Eliminando..."
+                  : deleteConfirmation.confirmLabel}
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={closeDeleteConfirmation}
+                disabled={Boolean(serviceDeletingId)}
+              >
+                Cancelar
+              </button>
+            </div>
           </section>
         </div>
       )}
@@ -1735,7 +1794,7 @@ function App() {
                             <button
                               type="button"
                               className="button button--danger button--small"
-                              onClick={() => handleServiceDelete(service)}
+                              onClick={() => requestServiceDelete(service)}
                               disabled={
                                 serviceDeletingId === service.id || serviceTogglingId === service.id
                               }
