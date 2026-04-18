@@ -66,12 +66,20 @@ const initialExcelFilters = {
 
 const currentMonthValue = new Date().toISOString().slice(0, 7);
 
+function createEmptyTurno(horaInicio = "08:00", horaFin = "") {
+  return {
+    horaInicio,
+    horaFin,
+  };
+}
+
 const initialServiceForm = {
   nombre: "",
   lat: "",
   lon: "",
   radioMetros: "200",
-  horaEntradaLimite: "08:00",
+  toleranciaTurnoMinutos: "60",
+  turnos: [createEmptyTurno()],
   activo: true,
 };
 
@@ -112,7 +120,15 @@ function mapServicePayload(form) {
     lat: Number(form.lat),
     lon: Number(form.lon),
     radioMetros: Number(form.radioMetros),
-    horaEntradaLimite: form.horaEntradaLimite,
+    toleranciaTurnoMinutos: Number(form.toleranciaTurnoMinutos),
+    turnos: form.turnos.map((turno) => {
+      const horaFin = String(turno.horaFin || "").trim();
+
+      return {
+        horaInicio: String(turno.horaInicio || "").trim(),
+        ...(horaFin ? { horaFin } : {}),
+      };
+    }),
     activo: normalizeBoolean(form.activo),
   };
 }
@@ -122,7 +138,9 @@ function validateServiceForm(form) {
   const lat = Number(form.lat);
   const lon = Number(form.lon);
   const radioMetros = Number(form.radioMetros);
-  const horaEntradaLimite = String(form.horaEntradaLimite || "").trim();
+  const toleranciaTurnoMinutos = Number(form.toleranciaTurnoMinutos);
+  const turnos = Array.isArray(form.turnos) ? form.turnos : [];
+  const hourPattern = /^\d{2}:\d{2}$/;
 
   if (!nombre) {
     return "El nombre del servicio es obligatorio.";
@@ -140,11 +158,52 @@ function validateServiceForm(form) {
     return "El radio en metros debe ser mayor a 0.";
   }
 
-  if (!/^\d{2}:\d{2}$/.test(horaEntradaLimite)) {
-    return "La hora limite debe tener formato HH:MM.";
+  if (!Number.isInteger(toleranciaTurnoMinutos) || toleranciaTurnoMinutos < 0 || toleranciaTurnoMinutos > 720) {
+    return "La tolerancia por turno debe ser un entero entre 0 y 720 minutos.";
+  }
+
+  if (turnos.length === 0) {
+    return "Debes cargar al menos un turno.";
+  }
+
+  const horasInicio = new Set();
+
+  for (const turno of turnos) {
+    const horaInicio = String(turno?.horaInicio || "").trim();
+    const horaFin = String(turno?.horaFin || "").trim();
+
+    if (!hourPattern.test(horaInicio)) {
+      return "Cada turno debe tener una hora de inicio con formato HH:mm.";
+    }
+
+    if (horaFin && !hourPattern.test(horaFin)) {
+      return "La hora de fin de cada turno debe tener formato HH:mm.";
+    }
+
+    if (horasInicio.has(horaInicio)) {
+      return "No puede haber turnos con la misma hora de inicio.";
+    }
+
+    horasInicio.add(horaInicio);
   }
 
   return "";
+}
+
+function formatTurno(turno) {
+  if (!turno?.horaInicio) {
+    return "--:--";
+  }
+
+  return turno.horaFin ? `${turno.horaInicio} a ${turno.horaFin}` : turno.horaInicio;
+}
+
+function formatTurnos(turnos) {
+  if (!Array.isArray(turnos) || turnos.length === 0) {
+    return "-";
+  }
+
+  return turnos.map((turno) => formatTurno(turno)).join(", ");
 }
 
 function formatClock(value) {
@@ -442,6 +501,32 @@ function App() {
     }));
   };
 
+  const handleServiceTurnoChange = (index, field, value) => {
+    setServiceForm((current) => ({
+      ...current,
+      turnos: current.turnos.map((turno, turnoIndex) =>
+        turnoIndex === index ? { ...turno, [field]: value } : turno,
+      ),
+    }));
+  };
+
+  const handleAddServiceTurno = () => {
+    setServiceForm((current) => ({
+      ...current,
+      turnos: [...current.turnos, createEmptyTurno()],
+    }));
+  };
+
+  const handleRemoveServiceTurno = (index) => {
+    setServiceForm((current) => ({
+      ...current,
+      turnos:
+        current.turnos.length > 1
+          ? current.turnos.filter((_, turnoIndex) => turnoIndex !== index)
+          : current.turnos,
+    }));
+  };
+
   const handleUserChange = (event) => {
     const { name, value, type, checked } = event.target;
 
@@ -457,13 +542,18 @@ function App() {
   };
 
   const startEditService = (service) => {
+    const normalizedTurnos = Array.isArray(service.turnos) && service.turnos.length > 0
+      ? service.turnos.map((turno) => createEmptyTurno(turno.horaInicio || "08:00", turno.horaFin || ""))
+      : [createEmptyTurno(service.horaEntradaLimite || "08:00")];
+
     setServiceEditingId(service.id);
     setServiceForm({
       nombre: service.nombre || "",
       lat: String(service.lat ?? ""),
       lon: String(service.lon ?? ""),
       radioMetros: String(service.radioMetros ?? 200),
-      horaEntradaLimite: service.horaEntradaLimite || "08:00",
+      toleranciaTurnoMinutos: String(service.toleranciaTurnoMinutos ?? 60),
+      turnos: normalizedTurnos,
       activo: Boolean(service.activo),
     });
   };
@@ -1474,11 +1564,14 @@ function App() {
                   </label>
 
                   <label className="field">
-                  <span>Hora límite de entrada</span>
+                    <span>Tolerancia turno minutos</span>
                     <input
-                      name="horaEntradaLimite"
-                      type="time"
-                      value={serviceForm.horaEntradaLimite}
+                      name="toleranciaTurnoMinutos"
+                      type="number"
+                      min="0"
+                      max="720"
+                      step="1"
+                      value={serviceForm.toleranciaTurnoMinutos}
                       onChange={handleServiceChange}
                     />
                   </label>
@@ -1492,6 +1585,68 @@ function App() {
                     />
                     <span>Activo</span>
                   </label>
+                </div>
+
+                <div className="service-turnos">
+                  <div className="service-turnos__header">
+                    <div>
+                      <h3>Turnos</h3>
+                      <p className="helper-text">
+                        Editá la lista completa que se enviará al backend al guardar el servicio.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      onClick={handleAddServiceTurno}
+                    >
+                      Agregar turno
+                    </button>
+                  </div>
+
+                  <div className="service-turnos__list">
+                    {serviceForm.turnos.map((turno, index) => (
+                      <div key={`turno-${index}`} className="service-turno-card">
+                        <strong className="service-turno-card__title">Turno {index + 1}</strong>
+
+                        <div className="service-turno-card__fields">
+                          <label className="field">
+                            <span>Hora inicio</span>
+                            <input
+                              type="time"
+                              value={turno.horaInicio}
+                              onChange={(event) =>
+                                handleServiceTurnoChange(index, "horaInicio", event.target.value)
+                              }
+                            />
+                          </label>
+
+                          <label className="field">
+                            <span>Hora fin</span>
+                            <input
+                              type="time"
+                              value={turno.horaFin}
+                              onChange={(event) =>
+                                handleServiceTurnoChange(index, "horaFin", event.target.value)
+                              }
+                            />
+                          </label>
+                        </div>
+
+                        <div className="actions">
+                          <button
+                            type="button"
+                            className="button button--ghost button--small"
+                            onClick={() => handleRemoveServiceTurno(index)}
+                            disabled={serviceForm.turnos.length === 1}
+                          >
+                            Eliminar turno
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="actions">
@@ -1520,7 +1675,8 @@ function App() {
                       <th>Nombre</th>
                       <th>Coordenadas</th>
                       <th>Radio</th>
-                      <th>Hora limite</th>
+                      <th>Turnos</th>
+                      <th>Tolerancia</th>
                       <th>Estado</th>
                       <th>Acciones</th>
                     </tr>
@@ -1528,11 +1684,11 @@ function App() {
                   <tbody>
                     {servicesLoading ? (
                       <tr>
-                        <td colSpan="6">Cargando servicios...</td>
+                        <td colSpan="7">Cargando servicios...</td>
                       </tr>
                     ) : services.length === 0 ? (
                       <tr>
-                        <td colSpan="6">No hay servicios cargados.</td>
+                        <td colSpan="7">No hay servicios cargados.</td>
                       </tr>
                     ) : (
                       services.map((service) => (
@@ -1542,7 +1698,12 @@ function App() {
                             {service.lat}, {service.lon}
                           </td>
                           <td>{service.radioMetros ?? "-"}</td>
-                          <td>{service.horaEntradaLimite || "-"}</td>
+                          <td>{formatTurnos(service.turnos)}</td>
+                          <td>
+                            {service.toleranciaTurnoMinutos != null
+                              ? `${service.toleranciaTurnoMinutos} min`
+                              : "-"}
+                          </td>
                           <td>{service.activo ? "Activo" : "Inactivo"}</td>
                           <td className="table__actions">
                             <button

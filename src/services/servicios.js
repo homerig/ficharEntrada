@@ -1,9 +1,33 @@
 import { apiRequest } from "./api";
 
+function normalizeTurno(turno, index = 0) {
+  if (!turno) {
+    return null;
+  }
+
+  return {
+    id: turno.id ?? null,
+    horaInicio: turno.horaInicio ?? turno.hora_inicio ?? null,
+    horaFin: turno.horaFin ?? turno.hora_fin ?? null,
+    orden: turno.orden ?? index,
+  };
+}
+
 function normalizeServicio(service) {
   if (!service) {
     return service;
   }
+
+  const rawTurnos = Array.isArray(service.turnos)
+    ? service.turnos
+    : service.horaEntradaLimite || service.hora_entrada_limite || service.horaEntrada
+      ? [
+          {
+            horaInicio:
+              service.horaEntradaLimite ?? service.hora_entrada_limite ?? service.horaEntrada,
+          },
+        ]
+      : [];
 
   return {
     ...service,
@@ -14,6 +38,9 @@ function normalizeServicio(service) {
     radioMetros: service.radioMetros ?? service.radio_metros ?? null,
     horaEntradaLimite:
       service.horaEntradaLimite ?? service.hora_entrada_limite ?? service.horaEntrada ?? null,
+    toleranciaTurnoMinutos:
+      service.toleranciaTurnoMinutos ?? service.tolerancia_turno_minutos ?? null,
+    turnos: rawTurnos.map((turno, index) => normalizeTurno(turno, index)).filter(Boolean),
     activo: service.activo ?? service.active ?? false,
   };
 }

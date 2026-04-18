@@ -472,6 +472,48 @@ button:disabled {
   line-height: 1.45;
 }
 
+.service-turnos {
+  display: grid;
+  gap: 16px;
+}
+
+.service-turnos__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.service-turnos__header h3 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 1.05rem;
+}
+
+.service-turnos__list {
+  display: grid;
+  gap: 12px;
+}
+
+.service-turno-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.service-turno-card__title {
+  color: var(--text);
+}
+
+.service-turno-card__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
 .table-wrap {
   overflow-x: auto;
   margin-top: 24px;
@@ -538,6 +580,15 @@ button:disabled {
   .timeline-card__header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .service-turnos__header,
+  .service-turno-card__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .service-turnos__header {
+    display: grid;
   }
 }
 
